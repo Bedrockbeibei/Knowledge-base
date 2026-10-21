@@ -1,14 +1,16 @@
 # 沉潜知识库
 
-单文件 Neo-Brutalism 个人知识库（`knowledge-base.html`）：文件夹树、文章阅读器、置顶、任务清单、本地导入（文件/文件夹），以及 GitHub 登录后的作者专属编辑与仓库同步。
+单文件 Neo-Brutalism 个人知识库（`index.html`）：文件夹树、文章阅读器、置顶、任务清单、本地导入（文件/文件夹），以及 GitHub 登录后的作者专属编辑与仓库同步。
 
 ## 一、部署到 GitHub Pages
 
-1. 新建仓库（public），把 `knowledge-base.html` 放到仓库根目录，重命名为 `index.html`。
+1. 新建仓库（public），把 `index.html` 和 `.nojekyll` 上传到仓库根目录（README.md 可传可不传）。
 2. 仓库 **Settings → Pages**，Source 选 `Deploy from a branch`，分支 `main`、目录 `/ (root)`，保存。
 3. 等 1~2 分钟，访问 `https://<你的用户名>.github.io/<仓库名>/`。
 
 > 页面完全自包含（Tailwind 已内联），无需构建、无需安装依赖。
+
+> **打开是 404「There isn't a GitHub Pages site here」？** 说明 Pages 没开：进仓库 Settings → Pages，按上面第 2 步设置并保存，等 1~2 分钟再刷新。开了 Pages 仍 404，检查根目录有没有 `index.html`（必须叫这个名字），以及分支选的是不是 `main`。
 
 ## 二、开通 GitHub 登录（作者功能）
 
