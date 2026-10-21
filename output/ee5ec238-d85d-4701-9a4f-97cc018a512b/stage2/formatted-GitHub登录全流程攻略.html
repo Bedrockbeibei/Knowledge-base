@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="docx-page-size" content="A4">
+  <title>GitHub 登录全流程详细攻略（沉潜知识库）</title>
+  <style>
+  :root {
+    /* 页面布局 */
+    --page-content-width: var(--layout-maxContentWidth, 15.6cm);
+    /* 排版令牌（design-token: modern-minimal；字体与正文字号按 docx 引擎硬约束覆写） */
+    --typography-fontFamily-heading: "SimHei", "黑体", sans-serif;
+    --typography-fontFamily-body: "SimSun", "宋体", serif;
+    --typography-fontFamily-bodyLatin: "Inter", "Helvetica Neue", Arial, sans-serif;
+    --typography-fontFamily-code: "JetBrains Mono", "Fira Code", Consolas, monospace;
+    --typography-fontSize-title: 24pt;
+    --typography-fontSize-h1: 18pt;
+    --typography-fontSize-h2: 15pt;
+    --typography-fontSize-h3: 13pt;
+    --typography-fontSize-body: 12pt;
+    --typography-fontSize-small: 9pt;
+    --typography-lineHeight-title: 1.4;
+    --typography-lineHeight-body: 1.7;
+    --typography-lineHeight-heading: 1.3;
+    --typography-fontWeight-bold: 700;
+    --typography-fontWeight-heading: 600;
+    /* 颜色令牌 */
+    --color-primary: #2563EB;
+    --color-text: #111827;
+    --color-textSecondary: #6B7280;
+    --color-heading: #111827;
+    --color-border: #E5E7EB;
+    --color-divider: #F3F4F6;
+    --color-background: #FFFFFF;
+    --color-codeBackground: #F9FAFB;
+    --color-highlight: #FEF3C7;
+    /* 派生色（提示块底纹与边框） */
+    --color-primary-tint: #EEF2FF;
+    --color-note-bg: #FFFBEB;
+    --color-note-border: #D97706;
+    /* 间距令牌 */
+    --spacing-paragraph: 0.5em;
+    --spacing-sectionGap: 2em;
+    --spacing-listItemGap: 0.4em;
+    --spacing-indent: 2em;
+    --spacing-block: 1em;
+    --spacing-list-indent: 2em;
+    --spacing-cell: 0.5em 0.75em;
+    --margin-page: 2.5cm;
+    /* 本地别名（供下方规则引用） */
+    --fs-title: var(--typography-fontSize-title);
+    --fs-h1: var(--typography-fontSize-h1);
+    --fs-h2: var(--typography-fontSize-h2);
+    --fs-h3: var(--typography-fontSize-h3);
+    --fs-body: var(--typography-fontSize-body);
+    --fs-small: var(--typography-fontSize-small);
+    --ff-heading: var(--typography-fontFamily-heading);
+    --ff-body: var(--typography-fontFamily-body);
+    --ff-mono: var(--typography-fontFamily-code);
+    --lh-body: var(--typography-lineHeight-body);
+    --lh-heading: var(--typography-lineHeight-heading);
+    --fw-bold: var(--typography-fontWeight-bold);
+  }
+
+  /* 页面规则：正文页脚居中页码（当前页） */
+  @page { @bottom-center { content: counter(page); } }
+  /* 封面与目录命名页：无页脚 */
+  @page cover { @bottom-center { content: none; } }
+  section[role="cover"] { page: cover; }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: var(--ff-body);
+    font-size: var(--fs-body);
+    line-height: var(--lh-body);
+    color: var(--color-text);
+    background: var(--color-background);
+    max-width: var(--page-content-width);
+    margin-left: auto;
+    margin-right: auto;
+    padding: var(--margin-page) 0;
+  }
+
+  /* 封面块（每个块级元素自行声明 text-align，不依赖继承） */
+  .cover-title {
+    font-family: var(--ff-heading);
+    font-size: var(--fs-title);
+    font-weight: var(--fw-bold);
+    line-height: var(--lh-heading);
+    color: var(--color-heading);
+    margin-bottom: var(--spacing-block);
+  }
+  .cover-subtitle {
+    font-family: var(--ff-heading);
+    font-size: var(--fs-h3);
+    color: var(--color-textSecondary);
+    margin-bottom: var(--spacing-paragraph);
+  }
+  .cover-meta {
+    font-size: var(--fs-small);
+    color: var(--color-textSecondary);
+  }
+
+  h2, h3 {
+    font-family: var(--ff-heading);
+    line-height: var(--lh-heading);
+    font-weight: var(--fw-bold);
+    color: var(--color-heading);
+  }
+  h2 {
+    font-size: var(--fs-h2);
+    margin-top: var(--spacing-sectionGap);
+    margin-bottom: var(--spacing-paragraph);
+    border-bottom: 1px solid var(--color-border);
+    padding-bottom: var(--spacing-listItemGap);
+  }
+  h3 {
+    font-size: var(--fs-h3);
+    margin-top: var(--spacing-block);
+    margin-bottom: var(--spacing-paragraph);
+  }
+
+  p { margin-bottom: var(--spacing-paragraph); text-indent: var(--spacing-indent); }
+  .tldr, .note, .toc-title { text-indent: 0; }
+
+  ul, ol { padding-left: var(--spacing-list-indent); margin-bottom: var(--spacing-paragraph); }
+  li { margin-bottom: var(--spacing-listItemGap); }
+
+  strong { font-weight: var(--fw-bold); }
+
+  code {
+    font-family: var(--ff-mono);
+    font-size: var(--fs-small);
+    background: var(--color-codeBackground);
+    color: var(--color-text);
+  }
+
+  a { color: var(--color-primary); }
+
+  table { border-collapse: collapse; width: 100%; margin-bottom: var(--spacing-block); }
+  th, td {
+    padding: var(--spacing-cell);
+    border: 1px solid var(--color-border);
+    font-size: var(--fs-body);
+    text-align: left;
+    vertical-align: top;
+  }
+  th { font-weight: var(--fw-bold); background: var(--color-primary-tint); font-family: var(--ff-heading); }
+
+  /* 目录 */
+  .doc-toc {
+    margin-bottom: var(--spacing-sectionGap);
+    padding: var(--spacing-block);
+    background: var(--color-codeBackground);
+    border: 1px solid var(--color-border);
+  }
+  .toc-title {
+    font-family: var(--ff-heading);
+    font-weight: var(--fw-bold);
+    font-size: var(--fs-h3);
+    margin-bottom: var(--spacing-paragraph);
+    text-indent: 0;
+  }
+  .toc-list, .toc-list ol, .toc-list ul { list-style: none; list-style-type: none; margin: 0; padding: 0; }
+  .toc-list ol { padding-left: var(--spacing-list-indent); }
+  .toc-list li { margin-bottom: var(--spacing-listItemGap); text-indent: 0; }
+  .toc-list a { color: var(--color-primary); text-decoration: none; }
+
+  /* 摘要块（TL;DR） */
+  .tldr {
+    border-left: 3px solid var(--color-primary);
+    background: var(--color-primary-tint);
+    padding: var(--spacing-block);
+    margin-bottom: var(--spacing-block);
+    text-indent: 0;
+  }
+
+  /* 注意块（单段落强调，左边框 + 底纹） */
+  .note {
+    border-left: 3px solid var(--color-note-border);
+    background: var(--color-note-bg);
+    padding: var(--spacing-block);
+    margin-bottom: var(--spacing-block);
+    text-indent: 0;
+  }
+  </style>
+</head>
+<body>
+
+  <section role="cover">
+    <p class="cover-title" style="text-align: center;">GitHub 登录全流程详细攻略</p>
+    <p class="cover-subtitle" style="text-align: center;">沉潜知识库（knowledge-base.html）作者功能开通指南</p>
+    <p class="cover-meta" style="text-align: center;">2026 年 10 月</p>
+  </section>
+
+  <section role="cover">
+    <nav class="doc-toc" aria-label="文档目录">
+      <p class="toc-title">目录</p>
+      <ol class="toc-list">
+        <li><a href="#section-1">TL;DR</a></li>
+        <li><a href="#section-2">你将学到什么</a></li>
+        <li><a href="#section-3">前置要求</a></li>
+        <li><a href="#section-4">一、两种登录方式怎么选</a></li>
+        <li><a href="#section-5">二、方式 A：OAuth 授权登录（四步）</a>
+          <ol>
+            <li><a href="#section-5-1">Step 1：创建 OAuth App</a></li>
+            <li><a href="#section-5-2">Step 2：在知识库里填写 GitHub 设置</a></li>
+            <li><a href="#section-5-3">Step 3：发起授权</a></li>
+            <li><a href="#section-5-4">Step 4：识别身份</a></li>
+          </ol>
+        </li>
+        <li><a href="#section-6">三、方式 B：个人访问令牌（PAT）连接</a>
+          <ol>
+            <li><a href="#section-6-1">为什么本地双击打开时要用 PAT</a></li>
+            <li><a href="#section-6-2">创建 PAT</a></li>
+            <li><a href="#section-6-3">令牌连接</a></li>
+          </ol>
+        </li>
+        <li><a href="#section-7">四、登录后能做什么</a></li>
+        <li><a href="#section-8">五、常见问题排查</a></li>
+        <li><a href="#section-9">六、安全与隐私提示</a></li>
+        <li><a href="#section-10">附：文档信息</a></li>
+      </ol>
+    </nav>
+  </section>
+
+  <section role="body" data-page-restart="1">
+
+  <h2 id="section-1">TL;DR</h2>
+  <p class="tldr">知识库的 GitHub 登录有两条通道。部署在 GitHub Pages 上的页面用 <strong>OAuth 授权</strong>，这是主通道，四步走完：创建 OAuth App → 填写设置 → 授权 → 自动识别身份。本地双击打开（<code>file://</code> 协议）时 OAuth 不可用，改用 <strong>个人访问令牌（PAT）</strong>直连。能否解锁编辑与同步，取决于设置里填写的「你的 GitHub 用户名」和实际登录账号是否一致，比对时大小写不敏感。</p>
+
+  <h2 id="section-2">你将学到什么</h2>
+  <ul>
+    <li>□ 创建一个 GitHub OAuth App，并填对 Authorization callback URL</li>
+    <li>□ 在知识库设置窗完成各项配置并发起授权</li>
+    <li>□ 分清登录后「已登录」与「已识别为作者」的区别</li>
+    <li>□ 在本地 <code>file://</code> 场景用 PAT 完成连接</li>
+    <li>□ 排查常见登录失败</li>
+  </ul>
+
+  <h2 id="section-3">前置要求</h2>
+  <table>
+    <thead>
+      <tr><th>项</th><th>要求</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>GitHub 账号</td><td>已注册，能正常打开 Settings 页面</td></tr>
+      <tr><td>访问方式</td><td>方式 A 需要知识库已部署到 GitHub Pages（<code>https://</code> 地址）；方式 B 只需本地文件</td></tr>
+      <tr><td>浏览器</td><td>支持 Web Crypto API 的现代浏览器（Chrome / Edge / Firefox / Safari 均可）</td></tr>
+      <tr><td>预计耗时</td><td>OAuth 首次配置约 15 分钟；PAT 约 5 分钟</td></tr>
+    </tbody>
+  </table>
+
+  <h2 id="section-4">一、两种登录方式怎么选</h2>
+  <table>
+    <thead>
+      <tr><th>维度</th><th>方式 A：OAuth 授权</th><th>方式 B：个人访问令牌（PAT）</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>适用场景</td><td>部署在 GitHub Pages 的知识库</td><td>本地 <code>file://</code> 双击打开的知识库</td></tr>
+      <tr><td>前提条件</td><td>一个 OAuth App 的 Client ID</td><td>一个勾选 <code>repo</code> 权限的 PAT</td></tr>
+      <tr><td>令牌管理</td><td>授权后自动获取并存本地，无需手动创建</td><td>手动创建、手动粘贴，过期要自己换</td></tr>
+      <tr><td>权限粒度</td><td>授权页固定申请 <code>repo</code> 范围</td><td>创建时自选，建议同样只给 <code>repo</code></td></tr>
+      <tr><td>定位</td><td>线上部署首选</td><td>本地体验与 OAuth 不可用时的备选</td></tr>
+    </tbody>
+  </table>
+  <p>两条通道的最终效果相同：登录态都保存在浏览器本地，作者功能的解锁规则一致。</p>
+
+  <h2 id="section-5">二、方式 A：OAuth 授权登录（四步）</h2>
+  <p>OAuth 授权把身份确认交给 GitHub，令牌换取在页面本地完成，不经过任何第三方服务器。整条流程分四步。</p>
+
+  <h3 id="section-5-1">Step 1：创建 OAuth App</h3>
+  <ol>
+    <li>登录 GitHub，打开 <code>https://github.com/settings/developers</code>（Settings → Developer settings → OAuth Apps）。</li>
+    <li>点 <strong>New OAuth App</strong>，按下表填写：</li>
+  </ol>
+  <table>
+    <thead>
+      <tr><th>字段</th><th>填什么</th><th>示例</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>Application name</td><td>随意，仅用于授权页展示</td><td>沉潜知识库</td></tr>
+      <tr><td>Homepage URL</td><td>知识库的访问地址</td><td><code>https://你的用户名.github.io/仓库名/</code></td></tr>
+      <tr><td>Authorization callback URL</td><td>与 Homepage URL 完全一致</td><td><code>https://你的用户名.github.io/仓库名/</code></td></tr>
+    </tbody>
+  </table>
+  <ol start="3">
+    <li>点 <strong>Register application</strong> 完成创建。</li>
+  </ol>
+  <p class="note">&nbsp;&nbsp;<strong>注意</strong>：Authorization callback URL 必须与页面实际访问地址逐字符一致，<strong>包括结尾的斜杠</strong>。这是整条流程里最常见的失败点。地址栏里是 <code>https://user.github.io/repo/</code>（带斜杠），设置里写成不带斜杠的 <code>https://user.github.io/repo</code>，授权后 GitHub 会直接报 <code>redirect_uri mismatch</code>。最稳的做法是从地址栏复制 URL 原样粘贴。</p>
+  <p>创建完成后，页面上的 <strong>Client ID</strong> 就是下一步要用的值，形如 <code>Iv1.</code> 开头的一串字符。Client Secret 本流程不使用，无需理会。</p>
+
+  <h3 id="section-5-2">Step 2：在知识库里填写 GitHub 设置</h3>
+  <ol>
+    <li>打开知识库页面，点右上角 <strong>GitHub 登录</strong>。没有配置过时会自动弹出设置窗，之后也可以从右上角用户菜单再次进入。</li>
+    <li>按下表逐项填写：</li>
+  </ol>
+  <table>
+    <thead>
+      <tr><th>设置项</th><th>何时必填</th><th>说明</th><th>默认值</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>OAuth Client ID</td><td>方式 A 必填</td><td>粘贴 Step 1 拿到的 Client ID（<code>Iv1.</code> 开头）</td><td>空</td></tr>
+      <tr><td>你的 GitHub 用户名（作者标识）</td><td>两种方式都必填</td><td>你自己的登录名，决定谁能解锁作者功能</td><td>空</td></tr>
+      <tr><td>仓库所有者</td><td>同步时需要</td><td>一般是你的用户名</td><td>空</td></tr>
+      <tr><td>仓库名</td><td>同步时需要</td><td>存放知识库的仓库</td><td>空</td></tr>
+      <tr><td>分支</td><td>同步时需要</td><td>推送目标分支</td><td><code>main</code></td></tr>
+      <tr><td>仓库内存储目录</td><td>同步时需要</td><td>文章在仓库里的顶层目录</td><td><code>knowledge-base</code></td></tr>
+      <tr><td>个人访问令牌</td><td>方式 B 必填</td><td>填 PAT，见本文第三部分</td><td>空</td></tr>
+    </tbody>
+  </table>
+  <ol start="3">
+    <li>点 <strong>保存</strong>，弹出「已保存」即表示配置已写入浏览器本地。</li>
+  </ol>
+  <p class="note">&nbsp;&nbsp;<strong>注意</strong>：「你的 GitHub 用户名」填的是<strong>登录名</strong>，也就是 <code>github.com/</code> 后面那一段，不是个人主页上显示的昵称。</p>
+
+  <h3 id="section-5-3">Step 3：发起授权</h3>
+  <p>设置保存后，再点一次右上角 <strong>GitHub 登录</strong>，浏览器会跳转到 GitHub 授权页。这一跳背后按顺序发生四件事：</p>
+  <ol>
+    <li>页面本地生成一对 PKCE 密钥：一个随机 <code>verifier</code> 和它的 SHA-256 摘要 <code>challenge</code>，同时生成一个随机 <code>state</code>，三者暂存在当前标签页的 sessionStorage 里。</li>
+    <li>带着 <code>client_id</code>、<code>redirect_uri</code>、<code>scope=repo</code>、<code>state</code>、<code>code_challenge</code> 跳转到 GitHub 授权地址。</li>
+    <li>在 GitHub 授权页确认权限范围，点 <strong>Authorize</strong>。</li>
+    <li>GitHub 回调到知识库地址，URL 上带回 <code>code</code>；页面先比对 <code>state</code> 一致，再用 <code>code</code> 加 <code>code_verifier</code> 换取访问令牌，最后请求 <code>/user</code> 接口确认身份。</li>
+  </ol>
+  <p>整个过程不需要 Client Secret，令牌也不会经过任何第三方服务器。</p>
+  <p><strong>验证</strong>：授权页应显示你在 Step 1 填写的 Application name，权限提示包含对仓库的读写。</p>
+
+  <h3 id="section-5-4">Step 4：识别身份</h3>
+  <p>回调处理完成后页面刷新，右上角出现你的头像和登录名，同时弹出两种结果之一：</p>
+  <ul>
+    <li><strong>已识别为作者</strong>：登录名与设置的作者标识一致，编辑文章、上传、同步功能全部解锁。</li>
+    <li><strong>已登录</strong>：登录成功，但登录名不是配置的作者，只能浏览，作者功能保持隐藏。</li>
+  </ul>
+
+  <h2 id="section-6">三、方式 B：个人访问令牌（PAT）连接</h2>
+  <p>本地双击打开的知识库页面走不了 OAuth，改用个人访问令牌直连：先创建令牌，再粘贴连接。</p>
+
+  <h3 id="section-6-1">为什么本地双击打开时要用 PAT</h3>
+  <p>两个限制叠在一起：</p>
+  <ol>
+    <li><code>file://</code> 协议下页面地址形如 <code>file:///C:/...</code>，GitHub 不接受这类地址作为回调，OAuth 跳转无法完成。</li>
+    <li>PKCE 依赖 Web Crypto API，该 API 只在安全上下文（<code>https://</code> 或 <code>localhost</code>）中可用，<code>file://</code> 不在其列。</li>
+  </ol>
+  <p>因此在本地双击打开的页面里，点登录按钮时设置窗也会提示改用「个人令牌」连接。</p>
+
+  <h3 id="section-6-2">创建 PAT</h3>
+  <ol>
+    <li>打开 GitHub <strong>Settings → Developer settings → Personal access tokens</strong>。</li>
+    <li>选 <strong>Tokens (classic)</strong>，点 <strong>Generate new token (classic)</strong>。</li>
+    <li>权限只勾选 <strong>repo</strong>，这是读写仓库内容所需的最小范围；过期时间按需设置。</li>
+    <li>点生成后复制令牌，形如 <code>ghp_</code> 开头的一串字符。这个值只完整显示一次，离开页面后无法再查看，丢了只能重新生成。</li>
+  </ol>
+
+  <h3 id="section-6-3">令牌连接</h3>
+  <ol>
+    <li>打开知识库设置窗，先填好「你的 GitHub 用户名」「仓库所有者」「仓库名」等项。</li>
+    <li>在「个人访问令牌」一栏粘贴令牌，点 <strong>个人令牌连接</strong>（该按钮会顺手保存窗内其余配置）。</li>
+    <li>连接结果与方式 A 相同，同样会弹「已识别为作者」或「已登录」。</li>
+  </ol>
+  <p class="note">&nbsp;&nbsp;<strong>注意</strong>：fine-grained token 也能用，但需要额外对目标仓库勾选 Contents 的读写权限，否则上传会失败。第一次用建议直接用 classic token。</p>
+
+  <h2 id="section-7">四、登录后能做什么</h2>
+  <p>以作者身份登录后，知识库多出三样能力：</p>
+  <table>
+    <thead>
+      <tr><th>功能</th><th>入口</th><th>作用</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>编辑文章</td><td>文章页右上角「编辑文章」</td><td>修改标题与 HTML 正文，内置文章的修改保存在浏览器本地</td></tr>
+      <tr><td>上传</td><td>文件夹或文章面板上的「☁ 上传」</td><td>把单篇文章或整个文件夹推到仓库</td></tr>
+      <tr><td>同步到 GitHub</td><td>工具栏「同步到 GitHub」</td><td>一次同步全部文章</td></tr>
+    </tbody>
+  </table>
+  <p>仓库内的路径与知识库目录结构一一对应：文件名取文章标题，非法字符（<code>\ / : * ? " &lt; &gt; |</code>）替换为 <code>_</code>，内容是带基础样式的独立 HTML，可以直接在浏览器打开。</p>
+
+  <h2 id="section-8">五、常见问题排查</h2>
+  <table>
+    <thead>
+      <tr><th>现象</th><th>原因</th><th>处理</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>授权后 GitHub 报 <code>redirect_uri mismatch</code></td><td>callback URL 与页面地址不一致，常见是少结尾斜杠</td><td>从地址栏复制 URL，原样粘贴进 OAuth App 设置</td></tr>
+      <tr><td>弹窗提示「state 校验不通过」</td><td>sessionStorage 被清理，或在新标签页里发起授权</td><td>重新点一次登录，过程中不要清浏览器数据</td></tr>
+      <tr><td>登录成功但没有「编辑文章」「上传」按钮</td><td>登录名与设置的作者标识不一致</td><td>进设置检查「你的 GitHub 用户名」，确认填的是登录名</td></tr>
+      <tr><td>弹窗提示「连接失败：令牌无效或已过期」</td><td>PAT 过期、被撤销，或权限范围不足</td><td>重新生成勾选 <code>repo</code> 的令牌再连接</td></tr>
+      <tr><td>本地双击打开，点登录无反应或提示不可用</td><td><code>file://</code> 下 OAuth 与 Web Crypto 都受限</td><td>改用 PAT 连接（方式 B）</td></tr>
+      <tr><td>换设备或清缓存后要重新登录</td><td>登录态按「浏览器 + 访问地址」隔离存本地</td><td>属预期行为，重要内容先同步到仓库</td></tr>
+    </tbody>
+  </table>
+
+  <h2 id="section-9">六、安全与隐私提示</h2>
+  <ul>
+    <li>PAT 等同于密码级凭证：只授予必要的 <code>repo</code> 范围，过期时间按需设置，不要在公开场合粘贴。</li>
+    <li>Client ID 不是秘密，可以随页面公开；本流程不使用 Client Secret。</li>
+    <li>令牌与登录态保存在浏览器 localStorage，按「浏览器 + 访问地址」隔离。公共电脑上用完，记得从右上角头像菜单点「退出登录」。</li>
+    <li>清除浏览器数据会同时清掉本地登录态和尚未同步的本地修改，重要内容建议及时「同步到 GitHub」做备份。</li>
+  </ul>
+
+  <h2 id="section-10">附：文档信息</h2>
+  <ul>
+    <li>目标读者：想给自己的知识库开通 GitHub 登录与仓库同步的个人站长和开发者</li>
+    <li>前置知识：有 GitHub 账号，知道自己的知识库访问地址，不需要编程基础</li>
+    <li>预计阅读时间：约 10 分钟</li>
+    <li>适用对象：沉潜知识库（<code>knowledge-base.html</code>）的 GitHub 登录功能</li>
+  </ul>
+
+  </section>
+</body>
+</html>
