@@ -871,10 +871,12 @@ void Int0_ISR(void) interrupt 0 {
   <div class="relative bg-white border-[3px] border-black shadow-hard-8 p-6 max-w-md w-full max-h-[90vh] overflow-y-auto">
     <div class="font-display text-lg mb-1">GitHub 设置</div>
     <p class="text-xs font-bold text-neutral-500 mb-4 leading-relaxed">
-      填写后即可登录并同步。OAuth 登录需在 github.com/settings/developers 创建 OAuth App，Authorization callback URL 填本页地址（线上使用时如 <span class="font-mono">https://用户名.github.io/仓库名/</span>）。本地 file:// 打开时 OAuth 不可用，请改用下方「个人令牌」直接连接。
+      作者标识与仓库信息用于识别身份、同步文章。登录首选「个人令牌（PAT）」，任何环境可用；OAuth 一键登录需额外部署令牌交换服务（Cloudflare Worker，代码见仓库 <span class="font-mono">workers/oauth-proxy.js</span>），配置方法见 README「登录」一节。
     </p>
-    <label class="block text-xs font-extrabold mb-1">OAuth Client ID</label>
+    <label class="block text-xs font-extrabold mb-1">OAuth Client ID（可选，OAuth 登录用）</label>
     <input id="ghClientId" class="w-full px-3 py-2 mb-3 bg-cream border-2 border-black font-bold text-xs focus:outline-none focus:shadow-hard-2" placeholder="Iv1.xxxxxxxx" />
+    <label class="block text-xs font-extrabold mb-1">令牌交换服务地址（Worker URL，OAuth 登录用，可留空）</label>
+    <input id="ghWorkerUrl" class="w-full px-3 py-2 mb-3 bg-cream border-2 border-black font-bold text-xs focus:outline-none focus:shadow-hard-2" placeholder="https://你的Worker.workers.dev" />
     <label class="block text-xs font-extrabold mb-1">你的 GitHub 用户名（作者标识）</label>
     <input id="ghAuthor" class="w-full px-3 py-2 mb-3 bg-cream border-2 border-black font-bold text-xs focus:outline-none focus:shadow-hard-2" placeholder="例如：zhaominghao" />
     <div class="border-t-2 border-black my-4"></div>
@@ -887,12 +889,52 @@ void Int0_ISR(void) interrupt 0 {
     <label class="block text-xs font-extrabold mb-1">仓库内存储目录（与知识库路径一一对应）</label>
     <input id="ghBaseDir" class="w-full px-3 py-2 mb-4 bg-cream border-2 border-black font-bold text-xs focus:outline-none focus:shadow-hard-2" placeholder="knowledge-base" />
     <div class="border-t-2 border-black my-4"></div>
-    <label class="block text-xs font-extrabold mb-1">个人令牌（PAT，可选，本地开发用）</label>
-    <input id="ghPat" type="password" class="w-full px-3 py-2 mb-4 bg-cream border-2 border-black font-bold text-xs focus:outline-none focus:shadow-hard-2" placeholder="ghp_...（勾选 repo 权限）" />
+    <label class="block text-xs font-extrabold mb-1">个人访问令牌（PAT，推荐，任何环境可用）</label>
+    <input id="ghPat" type="password" class="w-full px-3 py-2 mb-4 bg-cream border-2 border-black font-bold text-xs focus:outline-none focus:shadow-hard-2" placeholder="github_pat_... 或 ghp_...（Contents 读写权限）" />
     <div class="flex gap-3 justify-end">
       <button id="ghModalCancel" class="press px-4 py-2 bg-white border-2 border-black shadow-hard-2 font-extrabold text-sm">取消</button>
       <button id="ghPatConnect" class="press px-4 py-2 bg-sky border-2 border-black shadow-hard-2 font-extrabold text-sm">令牌连接</button>
       <button id="ghModalSave" class="press px-4 py-2 bg-mint border-2 border-black shadow-hard-2 font-extrabold text-sm">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- GitHub 登录 -->
+<div id="loginModal" class="is-hidden fixed inset-0 z-[70] grid place-items-center p-4">
+  <div class="absolute inset-0 bg-black/40"></div>
+  <div class="relative bg-white border-[3px] border-black shadow-hard-8 p-6 max-w-md w-full max-h-[90vh] overflow-y-auto">
+    <div class="font-display text-lg mb-1">登录 GitHub</div>
+    <p class="text-xs font-bold text-neutral-500 mb-4 leading-relaxed">登录后自动识别作者身份，解锁文章编辑与仓库同步。令牌只保存在你自己浏览器的 localStorage，不会发送到除 GitHub 以外的任何地方。</p>
+    <div class="flex gap-2 mb-4">
+      <button id="loginTabPat" class="press flex-1 px-3 py-2 bg-mint border-2 border-black shadow-hard-2 font-extrabold text-xs">个人令牌（推荐）</button>
+      <button id="loginTabOauth" class="press flex-1 px-3 py-2 bg-white border-2 border-black shadow-hard-2 font-extrabold text-xs">OAuth 一键登录</button>
+    </div>
+    <div id="loginPanePat">
+      <label class="block text-xs font-extrabold mb-1">个人访问令牌（PAT）</label>
+      <input id="loginPat" type="password" class="w-full px-3 py-2 mb-3 bg-cream border-2 border-black font-bold text-xs focus:outline-none focus:shadow-hard-2" placeholder="github_pat_... 或 ghp_..." />
+      <button id="loginPatBtn" class="press w-full px-4 py-2.5 bg-sky border-2 border-black shadow-hard-2 font-extrabold text-sm mb-4">连接</button>
+      <div class="border-t-2 border-black pt-3 text-xs font-medium text-neutral-600 leading-relaxed">
+        <p class="font-extrabold text-neutral-800 mb-1.5">怎么创建（约 2 分钟）：</p>
+        <p>1. 打开 <span class="font-mono">github.com/settings/tokens?type=beta</span> → Generate new token</p>
+        <p>2. Repository access 选 Only select repositories，勾选你的知识库仓库</p>
+        <p>3. Permissions → Contents 设为 Read and write</p>
+        <p>4. 生成后复制粘贴到上方（只显示一次）；也可用经典令牌 <span class="font-mono">ghp_</span>（勾选 repo 权限）</p>
+      </div>
+      <p class="mt-3 text-xs font-bold text-neutral-500">登录后提示「不是作者」？<button id="loginOpenSettings" class="underline">填写作者标识与仓库设置</button></p>
+    </div>
+    <div id="loginPaneOauth" class="is-hidden">
+      <div id="oauthReadyBox" class="is-hidden">
+        <button id="loginOauthBtn" class="press w-full px-4 py-2.5 bg-grape border-2 border-black shadow-hard-2 font-extrabold text-sm text-white mb-3">使用 GitHub 一键登录</button>
+        <p class="text-xs font-bold text-neutral-500">将跳转到 GitHub 授权页，完成后自动返回本页。</p>
+      </div>
+      <div id="oauthGuideBox" class="border-2 border-black bg-cream p-3 text-xs font-bold leading-relaxed">
+        <p class="mb-2" id="oauthGuideMsg">尚未配置 OAuth。</p>
+        <p class="font-medium text-neutral-600">OAuth 一键登录需要一个服务端角色换取令牌：GitHub 的 client_secret 不能放在网页里，且 GitHub 的令牌接口不返回 CORS 头，浏览器直连必然失败（也就是「Failed to fetch」的来历）。按仓库内 <span class="font-mono">workers/oauth-proxy.js</span> 的注释部署一个 Cloudflare Worker（约 10 分钟），再把 Client ID 与 Worker 地址填进设置即可启用。在配好之前，用「个人令牌」登录，功能完全一样。</p>
+        <button id="oauthGuideSettings" class="press mt-3 px-3 py-1.5 bg-white border-2 border-black shadow-hard-2 font-extrabold text-xs">打开设置填写</button>
+      </div>
+    </div>
+    <div class="flex gap-3 justify-end mt-5">
+      <button id="loginModalClose" class="press px-4 py-2 bg-white border-2 border-black shadow-hard-2 font-extrabold text-sm">取消</button>
     </div>
   </div>
 </div>
@@ -949,7 +991,7 @@ void Int0_ISR(void) interrupt 0 {
   };
 
   /* ===== 全局状态（提前初始化并加载：route() 首次渲染早于下方模块执行） ===== */
-  var GH_DEFAULT = { clientId: '', author: '', owner: '', repo: '', branch: 'main', baseDir: 'knowledge-base' };
+  var GH_DEFAULT = { clientId: '', workerUrl: '', author: '', owner: '', repo: '', branch: 'main', baseDir: 'knowledge-base' };
   var GH = { token: null, user: null, config: {} };
   var EDITS = {};        // 内置文章的编辑覆盖：id -> html
   var SYNCED = {};       // 已同步到仓库的文章：id -> { time, path }
@@ -2325,19 +2367,55 @@ void Int0_ISR(void) interrupt 0 {
     renderPanels(currentFolder);
     renderPinned();
   }
-  document.getElementById('ghLoginBtn').addEventListener('click', function () {
-    if (!GH.config.clientId) { openGHSettings('请先填写 OAuth App 的 Client ID（本地 file:// 打开可用「个人令牌」直接连接）'); return; }
-    pkcePair().then(function (p) {
-      sessionStorage.setItem('cqkb-gh-verifier', p.verifier);
-      var state = Math.random().toString(36).slice(2) + Date.now().toString(36);
-      sessionStorage.setItem('cqkb-gh-state', state);
-      var redirect = location.origin + location.pathname;
-      location.href = 'https://github.com/login/oauth/authorize?client_id=' + encodeURIComponent(GH.config.clientId) +
-        '&redirect_uri=' + encodeURIComponent(redirect) +
-        '&scope=' + encodeURIComponent('repo') +
-        '&state=' + encodeURIComponent(state) +
-        '&code_challenge=' + encodeURIComponent(p.challenge) + '&code_challenge_method=S256';
-    }).catch(function () { showConfirm('登录失败', '当前浏览器环境不支持安全上下文（需 https 或 localhost），请改用个人令牌连接。', null); });
+  /* ---- 登录弹窗：PAT 主路 + OAuth 受管路 ---- */
+  function openLoginModal() {
+    document.getElementById('loginPat').value = '';
+    switchLoginTab('pat');
+    document.getElementById('loginModal').classList.remove('is-hidden');
+  }
+  function closeLoginModal() { document.getElementById('loginModal').classList.add('is-hidden'); }
+  function switchLoginTab(which) {
+    var pat = which === 'pat';
+    document.getElementById('loginPanePat').classList.toggle('is-hidden', !pat);
+    document.getElementById('loginPaneOauth').classList.toggle('is-hidden', pat);
+    document.getElementById('loginTabPat').classList.toggle('bg-mint', pat);
+    document.getElementById('loginTabPat').classList.toggle('bg-white', !pat);
+    document.getElementById('loginTabOauth').classList.toggle('bg-mint', !pat);
+    document.getElementById('loginTabOauth').classList.toggle('bg-white', pat);
+    if (!pat) refreshOAuthPane();
+  }
+  function oauthConfigured() { return !!(GH.config.clientId && GH.config.workerUrl); }
+  function refreshOAuthPane() {
+    var ready = oauthConfigured();
+    document.getElementById('oauthReadyBox').classList.toggle('is-hidden', !ready);
+    document.getElementById('oauthGuideBox').classList.toggle('is-hidden', ready);
+    if (!ready) {
+      document.getElementById('oauthGuideMsg').textContent =
+        (!GH.config.clientId && !GH.config.workerUrl) ? '尚未配置 OAuth（缺少 Client ID 与 Worker 地址）。' :
+        (!GH.config.clientId ? '尚未填写 OAuth App 的 Client ID。' : '尚未填写令牌交换服务（Worker）地址。');
+    }
+  }
+  document.getElementById('ghLoginBtn').addEventListener('click', openLoginModal);
+  document.getElementById('loginModalClose').addEventListener('click', closeLoginModal);
+  document.getElementById('loginTabPat').addEventListener('click', function () { switchLoginTab('pat'); });
+  document.getElementById('loginTabOauth').addEventListener('click', function () { switchLoginTab('oauth'); });
+  document.getElementById('loginOpenSettings').addEventListener('click', function () { closeLoginModal(); openGHSettings(''); });
+  document.getElementById('oauthGuideSettings').addEventListener('click', function () { closeLoginModal(); openGHSettings(''); });
+  document.getElementById('loginPatBtn').addEventListener('click', function () {
+    var pat = document.getElementById('loginPat').value.trim();
+    if (!pat) { showConfirm('缺少令牌', '请填写个人访问令牌（PAT）。', null); return; }
+    closeLoginModal();
+    ghSetToken(pat).catch(function (e) { showConfirm('连接失败', e.message, null); });
+  });
+  document.getElementById('loginOauthBtn').addEventListener('click', function () {
+    if (!oauthConfigured()) { refreshOAuthPane(); return; }
+    var state = Math.random().toString(36).slice(2) + Date.now().toString(36);
+    sessionStorage.setItem('cqkb-gh-state', state);
+    sessionStorage.setItem('cqkb-gh-from', location.hash || '#/');
+    location.href = 'https://github.com/login/oauth/authorize?client_id=' + encodeURIComponent(GH.config.clientId) +
+      '&redirect_uri=' + encodeURIComponent(location.origin + location.pathname) +
+      '&scope=' + encodeURIComponent('repo') +
+      '&state=' + encodeURIComponent(state);
   });
   document.getElementById('ghUserBtn').addEventListener('click', function (e) {
     e.stopPropagation();
@@ -2360,18 +2438,6 @@ void Int0_ISR(void) interrupt 0 {
     openGHSettings('');
   });
 
-  /* ---- PKCE ---- */
-  function b64url(buf) {
-    return btoa(String.fromCharCode.apply(null, new Uint8Array(buf)))
-      .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-  }
-  function pkcePair() {
-    var verifier = b64url(crypto.getRandomValues(new Uint8Array(32)));
-    return crypto.subtle.digest('SHA-256', new TextEncoder().encode(verifier)).then(function (buf) {
-      return { verifier: verifier, challenge: b64url(buf) };
-    });
-  }
-
   /* ---- 令牌换取与用户识别 ---- */
   function ghSetToken(token) {
     GH.token = token;
@@ -2389,28 +2455,37 @@ void Int0_ISR(void) interrupt 0 {
   }
   function ghHandleCallback() {
     var params = new URLSearchParams(location.search);
-    var code = params.get('code'), state = params.get('state');
-    if (!code) return;
+    var code = params.get('code'), state = params.get('state'), err = params.get('error');
+    if (!code && !err) return;
     history.replaceState(null, '', location.pathname + location.hash);
-    if (state !== sessionStorage.getItem('cqkb-gh-state')) {
-      showConfirm('登录失败', 'state 校验不通过，请重试。', null);
+    if (err) {
+      showConfirm('登录失败', 'GitHub 未完成授权：' + (params.get('error_description') || err), null);
       return;
     }
-    var verifier = sessionStorage.getItem('cqkb-gh-verifier');
-    sessionStorage.removeItem('cqkb-gh-verifier');
+    if (state !== sessionStorage.getItem('cqkb-gh-state')) {
+      showConfirm('登录失败', 'state 校验不通过（可能是上次未完成的授权），请重新登录。', null);
+      return;
+    }
     sessionStorage.removeItem('cqkb-gh-state');
-    fetch('https://github.com/login/oauth/access_token', {
+    var from = sessionStorage.getItem('cqkb-gh-from') || '#/';
+    sessionStorage.removeItem('cqkb-gh-from');
+    if (!GH.config.workerUrl) {
+      showConfirm('登录失败', '尚未配置令牌交换服务（Worker 地址）。OAuth 需要服务端换取令牌，请改用「个人令牌」登录，或按 README「登录」一节配置 Worker。', null);
+      return;
+    }
+    // 令牌交换必须走服务端（Worker）：GitHub 该接口不返回 CORS 头，且 client_secret 不能进前端
+    fetch(GH.config.workerUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-      body: JSON.stringify({
-        client_id: GH.config.clientId, code: code,
-        redirect_uri: location.origin + location.pathname,
-        code_verifier: verifier, grant_type: 'authorization_code'
-      })
+      body: JSON.stringify({ code: code, redirect_uri: location.origin + location.pathname })
     }).then(function (r) { return r.json(); }).then(function (d) {
-      if (d.access_token) return ghSetToken(d.access_token);
-      showConfirm('登录失败', d.error_description || '未知错误', null);
-    }).catch(function (e) { showConfirm('登录失败', e.message, null); });
+      if (!d.access_token) { showConfirm('登录失败', d.error || '换取令牌失败', null); return; }
+      return ghSetToken(d.access_token).then(function () {
+        if (location.hash !== from) location.hash = from;
+      });
+    }).catch(function (e) {
+      showConfirm('登录失败', '无法连接令牌交换服务：' + (e && e.message ? e.message : e) + '。请检查网络后重试，或改用「个人令牌」登录。', null);
+    });
   }
 
   /* ---- 仓库 API ---- */
@@ -2516,6 +2591,7 @@ void Int0_ISR(void) interrupt 0 {
   /* ---- 设置弹窗 ---- */
   function openGHSettings(tip) {
     document.getElementById('ghClientId').value = GH.config.clientId || '';
+    document.getElementById('ghWorkerUrl').value = GH.config.workerUrl || '';
     document.getElementById('ghAuthor').value = GH.config.author || '';
     document.getElementById('ghOwner').value = GH.config.owner || '';
     document.getElementById('ghRepo').value = GH.config.repo || '';
@@ -2530,6 +2606,7 @@ void Int0_ISR(void) interrupt 0 {
   }
   document.getElementById('ghModalSave').addEventListener('click', function () {
     GH.config.clientId = document.getElementById('ghClientId').value.trim();
+    GH.config.workerUrl = document.getElementById('ghWorkerUrl').value.trim();
     GH.config.author = document.getElementById('ghAuthor').value.trim();
     GH.config.owner = document.getElementById('ghOwner').value.trim();
     GH.config.repo = document.getElementById('ghRepo').value.trim();
@@ -2548,6 +2625,7 @@ void Int0_ISR(void) interrupt 0 {
     if (!pat) { showConfirm('缺少令牌', '请填写个人访问令牌（PAT）。', null); return; }
     // 顺手保存其余配置
     GH.config.clientId = document.getElementById('ghClientId').value.trim();
+    GH.config.workerUrl = document.getElementById('ghWorkerUrl').value.trim();
     GH.config.author = document.getElementById('ghAuthor').value.trim();
     GH.config.owner = document.getElementById('ghOwner').value.trim();
     GH.config.repo = document.getElementById('ghRepo').value.trim();
