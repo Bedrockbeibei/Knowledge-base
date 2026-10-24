@@ -366,7 +366,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
             <button data-upload="folder" class="w-full text-left px-4 py-2.5 border-b-2 border-black font-extrabold text-xs flex items-center gap-2 hover:bg-cream">
               <i class="ri-folder-upload-line text-base"></i> 上传文件夹（含内部文件）
             </button>
-            <div class="px-4 py-2 text-[10px] font-bold text-neutral-500 leading-relaxed">支持 md / txt / html / docx / xlsx / pptx / pdf / 图片 / 音视频 / 其他附件（Office 提取正文，其余原样内嵌，单文件上限 30MB，总容量取决于磁盘配额）</div>
+            <div class="px-4 py-2 text-[10px] font-bold text-neutral-500 leading-relaxed">支持 md / txt / html / docx / xlsx / pptx / pdf / 图片 / 音视频 / 其他附件（docx / xlsx 提取正文预览，其余原样内嵌；所有类型均可从列表或文章页下载原文件，单文件上限 30MB，总容量取决于磁盘配额）</div>
           </div>
         </div>
         <button id="syncAllBtn" class="is-hidden press inline-flex items-center gap-1.5 px-3.5 py-2 bg-sky border-[3px] border-black shadow-hard font-extrabold text-xs">
@@ -1183,12 +1183,9 @@ void Int0_ISR(void) interrupt 0 {
     if (subs) meta.push(subs + ' 个子文件夹');
     if (files) meta.push(files + ' 篇文章');
     var delBtn = '<button class="press no-nav absolute top-2.5 right-2.5 w-7 h-7 grid place-items-center border-2 border-black bg-cream shadow-hard-2 z-10" data-del-folder="' + id + '" aria-label="删除文件夹"><i class="ri-close-line text-sm"></i></button>';
-    var ghBtn = isAuthor()
-      ? '<button class="press no-nav absolute top-2.5 right-11 w-7 h-7 grid place-items-center border-2 border-black bg-cream shadow-hard-2 z-10" data-gh-up="' + id + '" aria-label="上传整个文件夹到 GitHub" title="上传整个文件夹"><i class="ri-cloud-line text-sm"></i></button>'
-      : '';
     return '<div data-folder="' + id + '" class="card-hover cursor-pointer relative bg-white border-[3px] border-black shadow-hard pt-8">' +
       '<span class="absolute -top-3.5 left-5 w-24 h-3.5 bg-' + f.color + ' border-[3px] border-black rounded-t-md"></span>' +
-      delBtn + ghBtn +
+      delBtn +
       '<div class="px-5 pb-5">' +
         '<div class="flex items-center gap-3 mb-2">' +
           '<span class="w-11 h-11 grid place-items-center bg-' + f.color + ' border-2 border-black shadow-hard-2"><i class="ri-folder-3-fill text-2xl"></i></span>' +
@@ -1202,18 +1199,19 @@ void Int0_ISR(void) interrupt 0 {
     var a = articleInfo(id);
     var tf = topFolderOf(a.folder);
     var delBtn = '<button class="press no-nav w-7 h-7 shrink-0 self-start grid place-items-center border-2 border-black bg-cream shadow-hard-2" data-del-article="' + id + '" aria-label="删除文章"><i class="ri-close-line text-sm"></i></button>';
-    var ghBtn = (isAuthor() && (CUSTOM.articles[id] || ARTICLES[id]))
-      ? '<button class="press no-nav w-7 h-7 shrink-0 self-start grid place-items-center border-2 border-black bg-cream shadow-hard-2" data-gh-up="' + id + '" aria-label="上传到 GitHub" title="上传到 GitHub"><i class="ri-cloud-line text-sm"></i></button>'
+    // 内嵌了原始文件的行才给下载钮（导入的文件都有；内置笔记没有原始文件可下）
+    var dlBtn = embeddedFileOf(id)
+      ? '<button class="press no-nav w-7 h-7 shrink-0 self-start grid place-items-center border-2 border-black bg-cream shadow-hard-2" data-dl-article="' + id + '" aria-label="下载原文件" title="下载原文件"><i class="ri-download-line text-sm"></i></button>'
       : '';
     var synced = SYNCED[id] ? '<i class="ri-checkbox-circle-fill text-mint text-sm shrink-0 self-center" title="已同步 ' + SYNCED[id].time + '"></i>' : '';
     return '<div data-file="' + id + '" class="card-hover cursor-pointer relative bg-white border-[3px] border-black shadow-hard p-5">' +
       '<div class="flex items-start gap-3.5">' +
-        '<span class="w-11 h-11 shrink-0 grid place-items-center bg-' + folderColor(tf) + ' border-2 border-black shadow-hard-2"><i class="ri-file-text-line text-xl"></i></span>' +
+        '<span class="w-11 h-11 shrink-0 grid place-items-center bg-' + folderColor(tf) + ' border-2 border-black shadow-hard-2"><i class="' + fileIcon(articleExt(id)) + ' text-xl"></i></span>' +
         '<div class="min-w-0 flex-1">' +
           '<h3 class="font-extrabold text-base leading-snug mb-1.5">' + escapeHtml(articleTitle(id)) + '</h3>' +
           '<p class="text-xs font-bold text-neutral-500"><i class="ri-calendar-line"></i> ' + a.date + (showPath ? ' · ' + escapeHtml(folderPath(a.folder)) : '') + '</p>' +
         '</div>' +
-        delBtn + ghBtn + synced +
+        delBtn + dlBtn + synced +
         '<i class="ri-arrow-right-line text-xl shrink-0 self-center"></i>' +
       '</div>' +
     '</div>';
@@ -1279,6 +1277,8 @@ void Int0_ISR(void) interrupt 0 {
     if (delA) { confirmDeleteArticle(delA.getAttribute('data-del-article')); return; }
     var ghUp = e.target.closest('[data-gh-up]');
     if (ghUp) { ghUploadFromPanel(ghUp.getAttribute('data-gh-up')); return; }
+    var dlA = e.target.closest('[data-dl-article]');
+    if (dlA) { downloadEmbeddedFile(dlA.getAttribute('data-dl-article')); return; }
     var f = e.target.closest('[data-folder]');
     if (f) { location.hash = '#/folder/' + f.getAttribute('data-folder'); return; }
     var file = e.target.closest('[data-file]');
@@ -1989,6 +1989,49 @@ void Int0_ISR(void) interrupt 0 {
   var TEXT_EXT_RE = /^(md|markdown|txt|html|htm|csv|json|xml|log|srt|vtt)$/;
   var IMAGE_EXT_RE = /^(png|jpe?g|gif|webp|svg|bmp|ico)$/;
   var MEDIA_EXT_RE = /^(mp3|wav|ogg|m4a|flac|mp4|webm|mov|avi|mkv)$/;
+
+  /* ---- 文件类型图标（Remix Icon，类名已对照官方 CSS 核实存在） ---- */
+  var FILE_ICON_RULES = [
+    [/^(png|jpe?g|gif|webp|svg|bmp|ico)$/, 'ri-image-line'],
+    [/^pdf$/, 'ri-file-pdf-line'],
+    [/^(docx?|dotx?|rtf)$/, 'ri-file-word-line'],
+    [/^(xlsx?|xlsm|csv)$/, 'ri-file-excel-line'],
+    [/^(pptx?|potx?)$/, 'ri-file-ppt-line'],
+    [/^(mp3|wav|ogg|m4a|flac|aac)$/, 'ri-file-music-line'],
+    [/^(mp4|webm|mov|avi|mkv)$/, 'ri-file-video-line'],
+    [/^(zip|rar|7z|tar|gz)$/, 'ri-file-zip-line'],
+    [/^html?$/, 'ri-html5-line'],
+    [/^(md|markdown)$/, 'ri-markdown-line'],
+    [/^(js|ts|css|json|xml|py|c|cpp|h|java|sh|yml|yaml)$/, 'ri-file-code-line']
+  ];
+  function fileIcon(ext) {
+    ext = (ext || '').toLowerCase();
+    if (!ext) return 'ri-file-text-line';            // 内置笔记等无扩展名内容
+    for (var i = 0; i < FILE_ICON_RULES.length; i++) {
+      if (FILE_ICON_RULES[i][0].test(ext)) return FILE_ICON_RULES[i][1];
+    }
+    return 'ri-file-3-line';                          // 其他二进制附件
+  }
+  // 取一篇文章对应的文件扩展名：新导入存了 ext；早期导入的从 kw 尾 token 兜底；内置笔记无扩展名
+  function articleExt(id) {
+    var a = articleInfo(id);
+    if (!a) return '';
+    if (a.ext) return a.ext;
+    if (CUSTOM.articles[id]) {
+      var m = a.kw ? /\s([a-z0-9]{1,5})$/i.exec(a.kw) : null;
+      if (m) return m[1].toLowerCase();
+    }
+    return '';
+  }
+  // 文章里内嵌的原始文件（data URL + 下载文件名），没有则返回 null
+  function embeddedFileOf(id) {
+    var a = articleInfo(id);
+    if (!a || !a.html) return null;
+    var sm = /data-kb-src="([^"]+)"/.exec(a.html);
+    if (!sm) return null;
+    var dm = /download="([^"]*)"/.exec(a.html);
+    return { url: sm[1], name: (dm && dm[1]) || articleTitle(id) };
+  }
   function extOf(name) { var m = /\.([^.]+)$/.exec(name); return m ? m[1].toLowerCase() : ''; }
 
   function readFileAs(file, mode) {
@@ -2010,13 +2053,16 @@ void Int0_ISR(void) interrupt 0 {
             .replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&apos;/g, "'").replace(/&amp;/g, '&');
   }
 
-  /* ---- 极简 ZIP 读取（docx/xlsx/pptx 本质是 zip，用原生 DecompressionStream 解压） ---- */
+  /* ---- 极简 ZIP 读取（docx/xlsx 本质是 zip，用原生 DecompressionStream 解压） ---- */
   function dataUrlToBytes(dataUrl) {
     var b64 = dataUrl.slice(dataUrl.indexOf(',') + 1);
     var bin = atob(b64);
     var bytes = new Uint8Array(bin.length);
     for (var i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
     return bytes;
+  }
+  function dataUrlToText(dataUrl) {
+    return new TextDecoder().decode(dataUrlToBytes(dataUrl));
   }
   function zipListEntries(bytes) {
     var eocd = -1;
@@ -2074,15 +2120,6 @@ void Int0_ISR(void) interrupt 0 {
     if (ext === 'docx') {
       var doc = entries.filter(function (e) { return e.name === 'word/document.xml'; })[0];
       if (doc) html = xmlParagraphs(dec.decode(await zipReadEntry(bytes, doc)), /<\/w:p>/, /<w:t[^>]*>([\s\S]*?)<\/w:t>/g);
-    } else if (ext === 'pptx') {
-      var slides = entries.filter(function (e) { return /^ppt\/slides\/slide\d+\.xml$/.test(e.name); })
-        .sort(function (a, b) {
-          return (+/(\d+)/.exec(a.name)[1]) - (+/(\d+)/.exec(b.name)[1]);
-        });
-      for (var i = 0; i < slides.length; i++) {
-        var xml = dec.decode(await zipReadEntry(bytes, slides[i]));
-        html += '<h2>第 ' + (i + 1) + ' 页</h2>' + xmlParagraphs(xml, /<\/a:p>/, /<a:t>([\s\S]*?)<\/a:t>/g);
-      }
     } else if (ext === 'xlsx') {
       var shared = [];
       var ss = entries.filter(function (e) { return e.name === 'xl/sharedStrings.xml'; })[0];
@@ -2127,13 +2164,13 @@ void Int0_ISR(void) interrupt 0 {
   /* data URL 只暂存在 data-kb-src 属性里，文章渲染时由 hydrateEmbeds 统一转成 Blob URL：
      Chromium 的 PDF 浏览器不认 data: URL（预览空白），而 blob: 在 <object> / <a download> /
      file:// 页面下全部畅通。旧文章里直接写在 src/href/data 上的 data: URL 也会被一并转换。 */
-  function fileCardHtml(name, dataUrl, size) {
-    return '<div class="file-card"><i class="ri-file-3-line"></i>' +
+  function fileCardHtml(name, dataUrl, size, ext) {
+    return '<div class="file-card"><i class="' + fileIcon(ext) + '"></i>' +
       '<div class="fc-meta"><strong>' + escapeHtml(name) + '</strong><span>附件 · ' + fmtSize(size) + ' · 已内嵌，可下载</span></div>' +
       '<a data-kb-src="' + dataUrl + '" download="' + escapeHtml(name) + '">下载</a></div>';
   }
   function embedHtml(name, dataUrl, ext, size) {
-    var inner, card = fileCardHtml(name, dataUrl, size);
+    var inner, card = fileCardHtml(name, dataUrl, size, ext);
     if (IMAGE_EXT_RE.test(ext)) inner = '<p class="embed-img"><img data-kb-src="' + dataUrl + '" alt="' + escapeHtml(name) + '" /></p>' + card;
     else if (ext === 'pdf') inner = '<p class="embed-pdf"><object data-kb-src="' + dataUrl + '" type="application/pdf">当前浏览器不支持内嵌 PDF 预览，请使用下方「下载」按钮查看。</object></p>' + card;
     else if (/^(mp3|wav|ogg|m4a|flac)$/.test(ext)) inner = '<p class="embed-media"><audio controls data-kb-src="' + dataUrl + '"></audio></p>' + card;
@@ -2148,10 +2185,15 @@ void Int0_ISR(void) interrupt 0 {
     kbBlobUrls.forEach(function (u) { try { URL.revokeObjectURL(u); } catch (e) {} });
     kbBlobUrls = [];
   }
-  function hydrateOne(el, dataUrl) {
+  function dataUrlToBlobUrl(dataUrl) {
     return fetch(dataUrl).then(function (r) { return r.blob(); }).then(function (blob) {
       var u = URL.createObjectURL(blob);
       kbBlobUrls.push(u);
+      return u;
+    });
+  }
+  function hydrateOne(el, dataUrl) {
+    return dataUrlToBlobUrl(dataUrl).then(function (u) {
       var tag = el.tagName;
       if (tag === 'IMG' || tag === 'AUDIO' || tag === 'VIDEO') el.src = u;
       else if (tag === 'OBJECT') el.data = u;
@@ -2164,6 +2206,18 @@ void Int0_ISR(void) interrupt 0 {
       else if (tag === 'A') el.href = dataUrl;
       el.removeAttribute('data-kb-src');
     });
+  }
+  // 列表行上的下载钮：把内嵌的 data URL 转成 Blob 直接触发下载，不必先打开文章
+  function downloadEmbeddedFile(id) {
+    var f = embeddedFileOf(id);
+    if (!f) { showConfirm('无法下载', '这篇文章没有内嵌的原始文件（内置笔记或早期导入的内容暂不支持从列表直接下载，可打开文章查看）。', null); return; }
+    fetch(f.url).then(function (r) { return r.blob(); }).then(function (blob) {
+      var u = URL.createObjectURL(blob);
+      var a = document.createElement('a');
+      a.href = u; a.download = f.name;
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(function () { try { URL.revokeObjectURL(u); } catch (e) {} }, 60000);   // 等下载真正启动再回收
+    }).catch(function () { showConfirm('下载失败', '文件数据转换失败，请打开文章页后重试。', null); });
   }
   function hydrateEmbeds(root) {
     revokeBlobs();
@@ -2188,22 +2242,23 @@ void Int0_ISR(void) interrupt 0 {
   });
 
   /* ---- 统一导入入口：返回新文章 id ---- */
+  /* 所有类型都内嵌原始文件（data URL）供随时下载；文本与 docx/xlsx 在正文之外附一张附件卡。
+     PPT 不做文字提取——版面、图片、动画无法还原，抽出来的文字是残缺内容，按需求只保留内嵌下载。 */
   async function importFile(file, parentId) {
     var title = file.name.replace(/\.[^.]+$/, '');
     var ext = extOf(file.name);
+    var dataUrl = await readFileAs(file, 'dataurl');
     var html;
     if (TEXT_EXT_RE.test(ext)) {
-      var text = await readFileAs(file, 'text');
-      html = /^html?$/.test(ext) ? sanitizeHtml(text) : mdToHtml(text);
-    } else if (ext === 'docx' || ext === 'xlsx' || ext === 'pptx') {
-      var data = await readFileAs(file, 'dataurl');
-      html = await officeToHtml(file.name, data);
+      var text = dataUrlToText(dataUrl);
+      html = (/^html?$/.test(ext) ? sanitizeHtml(text) : mdToHtml(text)) + fileCardHtml(file.name, dataUrl, file.size, ext);
+    } else if (ext === 'docx' || ext === 'xlsx') {
+      html = await officeToHtml(file.name, dataUrl) + fileCardHtml(file.name, dataUrl, file.size, ext);
     } else {
-      var dataUrl = await readFileAs(file, 'dataurl');
       html = embedHtml(file.name, dataUrl, ext, file.size);
     }
     var id = uid('a');
-    CUSTOM.articles[id] = { title: title, folder: parentId, date: today(), kw: title + ' ' + ext, html: html };
+    CUSTOM.articles[id] = { title: title, folder: parentId, date: today(), kw: title + ' ' + ext, ext: ext, html: html };
     addCustomChild(parentId, id);
     return id;
   }
